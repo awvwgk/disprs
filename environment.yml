@@ -1,0 +1,21 @@
+name: disprs
+channels:
+  - conda-forge
+dependencies:
+  - rust
+  - meson
+  - ninja
+  - c-compiler
+  - fortran-compiler
+  - pkg-config
+  - python
+  - pip
+  - numpy
+  - pytest
+  - ruff
+  - clang
+  - clang-tools
+  - simple-dftd3
+  - dftd4
+  - pip:
+      - fortitude-lint==0.9.2

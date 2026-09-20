@@ -1,0 +1,19 @@
+[package]
+name = "disprs"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+license = "Apache-2.0"
+description = "D3, gCP, and D4 dispersion corrections"
+
+[lib]
+crate-type = ["rlib", "staticlib", "cdylib"]
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[lints.clippy]
+cast_possible_truncation = "warn"
+
+[dependencies]
+toml = { version = "1.1", default-features = false, features = ["parse", "std"] }

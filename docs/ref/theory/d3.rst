@@ -1,0 +1,61 @@
+D3 dispersion correction
+========================
+
+The D3 dispersion correction allows computing dispersion interactions via the atom pairwise and atom triplet summation of atomic contributions.
+
+.. math::
+
+   E_\text{disp}^\text{D3} =
+   - \sum_{i < j} \sum_{n=6,8} s_n \frac{C_n^{ij}}{R_{ij}^n} f_\text{damp}(R_{ij})
+   + \sum_{i < j < k} s_9 \frac{C_9^{ijk}}{R_{ijk}^9} f_\text{damp}(R_{ijk})
+
+The :math:`C_n^{ij}` are the dispersion coefficients for the atom pair :math:`i` and :math:`j`, and :math:`C_9^{ijk}` are the three-body dispersion coefficients for the atom triplet :math:`i`, :math:`j`, and :math:`k`.
+The :math:`s_6`, :math:`s_8`, and :math:`s_9` are scaling factors, and :math:`f_\text{damp}` is the damping function used to avoid singularities at short interatomic distances.
+
+
+Dispersion coefficients
+-----------------------
+
+In D3, the dispersion coefficients :math:`C_6^{ij}` are computed from the dynamic polarizabilities of the atoms :math:`i` and :math:`j` using the Casimir-Polder integral.
+
+.. math::
+
+   C_6^{ij} = \frac{3}{\pi} \int_0^\infty \alpha_i(i\omega) \alpha_j(i\omega) d\omega
+
+Where :math:`\alpha_i(i\omega)` is the isotropic dynamic polarizability of atom :math:`i` evaluated at imaginary frequency :math:`i\omega`.
+To obtain the environment-dependent dynamic polarizibility, an interpolation scheme based on reference systems is employed :math:`\alpha_i(i\omega) = \sum_\text{ref} w_\text{ref} \alpha_i^\text{ref}(i\omega)`.
+
+.. math::
+
+   \alpha_i(i\omega) = \sum_\text{ref} w_\text{ref} \alpha_i^\text{ref}(i\omega)
+
+where the sum runs over reference systems, :math:`w_\text{ref}` are the interpolation weights, and :math:`\alpha_i^\text{ref}(i\omega)` are the dynamic polarizabilities of the reference systems.
+The interpolation weights :math:`w_\text{ref}` depend on the local chemical environment of atom :math:`i` determined by its coordination number via
+
+.. math::
+
+   w_\text{ref} = \frac{\exp\left[-a_\text{CN}\left(\text{CN}_i - \text{CN}_\text{ref}\right)^2\right]}{\sum_\text{ref} \exp\left[-a_\text{CN}\left(\text{CN}_i - \text{CN}_\text{ref}\right)^2\right]}
+
+where :math:`\text{CN}_i` is the coordination number of atom :math:`i` and :math:`\text{CN}_\text{ref}` is the coordination number of the reference system.
+The parameter :math:`a_\text{CN}` controls the sensitivity of the interpolation weights to the difference in coordination numbers.
+
+
+Smooth interpolation
+--------------------
+
+An alternative to the continuous Gaussian interpolation of D3 is the smooth interpolation scheme of D3S.
+
+.. math::
+
+   \Delta_{i,\text{ref}} = \text{CN}_{i}^{\text{ref}} - \text{CN}_i,
+   \qquad m_i = \min_\text{ref} \Delta_{i,\text{ref}}^2.
+
+The weights for the interaction with atom :math:`j` are given by
+
+.. math::
+
+   w_{i,\text{ref}}^{(ij)} =
+   \frac{\exp[-a_{ij}(\Delta_{i,\text{ref}}^2-m_i)]}
+        {\sum_t \exp[-a_{ij}(\Delta_{i,t}^2-m_i)]}.
+
+Subtracting :math:`m_i` leaves the normalized weights unchanged, but makes the largest unnormalized weight equal to one, avoiding simultaneous exponential underflow for atom :math:`i`.

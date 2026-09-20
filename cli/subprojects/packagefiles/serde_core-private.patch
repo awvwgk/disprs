@@ -1,0 +1,15 @@
+--- a/src/crate_root.rs
++++ b/src/crate_root.rs
+@@ -162,7 +162,11 @@
+             pub use core::result::Result;
+         }
+ 
+-        include!(concat!(env!("OUT_DIR"), "/private.rs"));
++        #[doc(hidden)]
++        pub mod __private229 {
++            #[doc(hidden)]
++            pub use crate::private::*;
++        }
+ 
+         #[cfg(all(not(feature = "std"), no_core_error))]
+         #[cfg_attr(all(docsrs, if_docsrs_then_no_serde_core), path = "core/std_error.rs")]

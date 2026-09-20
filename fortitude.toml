@@ -1,0 +1,5 @@
+[check]
+extend-exclude = ["fortran/subprojects"]
+select = ["E", "C", "S001"]
+line-length = 132
+ignore = ["C002", "C003", "C061", "C071", "C121"]

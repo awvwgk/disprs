@@ -1,0 +1,180 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      publish_pypi:
+        description: Publish to PyPI (run on a version tag)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  sources:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran pkg-config
+          python -m pip install build meson-python meson ninja twine
+      - name: Configure complete library
+        run: meson setup build-release -Dfortran=enabled -Dpython=enabled --force-fallback-for=mctc-lib
+      - name: Check release version
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          python - <<'PY'
+          import json, os, subprocess, tomllib
+          version = json.loads(subprocess.check_output(
+              ['meson', 'introspect', 'build-release', '--projectinfo']))['version']
+          with open('Cargo.toml', 'rb') as source:
+              assert tomllib.load(source)['package']['version'] == version
+          if os.environ['REF_TYPE'] == 'tag':
+              assert os.environ['REF_NAME'] == 'v' + version
+          PY
+      - name: Build and test complete source tarball
+        run: |
+          meson compile -C build-release
+          meson test -C build-release --print-errorlogs
+          meson dist -C build-release --include-subprojects --formats=xztar
+      - name: Build standalone Python sdist and wheel
+        run: |
+          python -m build
+          python -m twine check dist/*
+          python -m venv wheel-test
+          wheel-test/bin/pip install --no-deps dist/*.whl
+          env -u DISPRS_LIBRARY -u PYTHONPATH wheel-test/bin/python -I python/test.py --bundled
+          rm dist/*.whl
+          cp build-release/meson-dist/*.tar.xz dist/
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sources
+          path: dist/*
+          if-no-files-found: error
+
+  wheels:
+    needs: sources
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: sources
+          path: dist
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+      - name: Locate sdist
+        id: sdist
+        shell: bash
+        run: echo "path=$(echo dist/*.tar.gz)" >> "$GITHUB_OUTPUT"
+      - uses: pypa/cibuildwheel@v3.2
+        with:
+          package-dir: ${{ steps.sdist.outputs.path }}
+          output-dir: wheelhouse
+        env:
+          CIBW_BUILD: 'cp310-* cp311-* cp312-* cp313-* cp314-*'
+          CIBW_SKIP: '*-musllinux_* *-win32 *-manylinux_i686'
+          CIBW_ARCHS: auto64
+          CIBW_BEFORE_ALL_LINUX: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          CIBW_ENVIRONMENT_LINUX: 'PATH=$HOME/.cargo/bin:$PATH'
+          CIBW_TEST_COMMAND: 'python -I {project}/python/test.py --bundled'
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wheels-${{ matrix.os }}
+          path: wheelhouse/*.whl
+          if-no-files-found: error
+
+  cli:
+    needs: sources
+    runs-on: ubuntu-24.04
+    env:
+      TARGET: x86_64-unknown-linux-musl
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+      - name: Install static build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+      - name: Build static CLI
+        run: |
+          cargo build --locked --release --target "$TARGET" --lib
+          export RUSTFLAGS="-L native=$PWD/target/$TARGET/release"
+          cargo build --locked --release --target "$TARGET" --manifest-path cli/Cargo.toml --features static
+          DISPRS_LIBRARY=/nonexistent/libdisprs.so cargo test --locked --release --target "$TARGET" --manifest-path cli/Cargo.toml --features static
+      - name: Verify and package static CLI
+        run: |
+          binary="cli/target/$TARGET/release/disprs"
+          file "$binary"
+          if readelf -l "$binary" | grep -q INTERP; then
+            echo 'Unexpected dynamic interpreter' >&2
+            exit 1
+          fi
+          if readelf -d "$binary" | grep -q NEEDED; then
+            echo 'Unexpected shared-library dependency' >&2
+            exit 1
+          fi
+          DISPRS_LIBRARY=/nonexistent/libdisprs.so "$binary" parameters pbe
+          mkdir -p dist
+          tar -cJf "dist/disprs-cli-$TARGET.tar.xz" -C "cli/target/$TARGET/release" disprs
+      - uses: actions/upload-artifact@v7
+        with:
+          name: cli-linux-x86_64
+          path: dist/*.tar.xz
+          if-no-files-found: error
+
+  github-release:
+    if: github.event_name == 'release'
+    needs: [sources, wheels, cli]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Attach release artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG" dist/* --clobber
+
+  pypi:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_pypi && startsWith(github.ref, 'refs/tags/v')
+    needs: [sources, wheels]
+    runs-on: ubuntu-24.04
+    environment:
+      name: pypi
+      url: https://pypi.org/p/disprs
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Remove non-Python source archive
+        run: rm dist/*.tar.xz
+      - uses: pypa/gh-action-pypi-publish@release/v1

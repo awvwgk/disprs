@@ -1,0 +1,13 @@
+D4 dispersion correction
+========================
+
+The D4 dispersion correction allows computing dispersion interactions via the atom pairwise and atom triplet summation of atomic contributions.
+
+.. math::
+
+   E_\text{disp}^\text{D4} =
+   - \sum_{i < j} \sum_{n=6,8} s_n \frac{C_n^{ij}}{R_{ij}^n} f_\text{damp}(R_{ij})
+   + \sum_{i < j < k} s_9 \frac{C_9^{ijk}}{R_{ijk}^9} f_\text{damp}(R_{ijk})
+
+The :math:`C_n^{ij}` are the dispersion coefficients for the atom pair :math:`i` and :math:`j`, and :math:`C_9^{ijk}` are the three-body dispersion coefficients for the atom triplet :math:`i`, :math:`j`, and :math:`k`.
+The :math:`s_6`, :math:`s_8`, and :math:`s_9` are scaling factors, and :math:`f_\text{damp}` is the damping function used to avoid singularities at short interatomic distances.

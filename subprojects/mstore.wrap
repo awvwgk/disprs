@@ -1,0 +1,6 @@
+[wrap-git]
+url = https://github.com/grimme-lab/mstore.git
+revision = 663245d739be0123da61c917e55116b0c3db4c74
+
+[provide]
+mstore = mstore_dep

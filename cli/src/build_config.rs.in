@@ -1,0 +1,2 @@
+pub const VERSION: &str = @VERSION@;
+pub const LIBRARY: Option<&str> = Some(@LIBRARY@);

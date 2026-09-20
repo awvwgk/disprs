@@ -1,0 +1,7 @@
+[wrap-file]
+directory = serde_core-1.0.229
+source_url = https://static.crates.io/crates/serde_core/1.0.229/download
+source_filename = serde_core-1.0.229.tar.gz
+source_hash = 67dca2c9c51e58a4791a4b1ed58308b39c64224d349a935ab5039aa360942a48
+diff_files = serde_core-private.patch
+method = cargo

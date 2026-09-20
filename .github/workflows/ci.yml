@@ -1,0 +1,172 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-frameworks:
+    name: Python Frameworks
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.12', '3.14']
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install wheel with optional frameworks
+        run: python -m pip install '.[ase,pyscf,qcschema]'
+      - name: Test installed package
+        env:
+          OMP_NUM_THREADS: '1'
+          OPENBLAS_NUM_THREADS: '1'
+        run: |
+          python -I python/test.py --bundled
+          python -I python/test_frameworks.py -v
+
+  lint-rust:
+    name: Lint Rust
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Create development environment
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: environment.yml
+          environment-name: disprs
+          cache-environment: true
+          init-shell: bash
+
+      - name: Lint Rust
+        run: |
+          cargo fmt --check
+          cargo clippy --all-targets -- -D warnings
+          cargo fmt --manifest-path cli/Cargo.toml --check
+          cargo clippy --manifest-path cli/Cargo.toml --all-targets -- -D warnings
+
+  lint-c:
+    name: Lint C
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Create development environment
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: environment.yml
+          environment-name: disprs
+          cache-environment: true
+          init-shell: bash
+
+      - name: Lint C
+        run: |
+          clang-format --dry-run --Werror \
+            tests/*.c \
+            include/*.h
+          clang-tidy \
+            --extra-arg=-resource-dir="$(clang -print-resource-dir)" \
+            tests/*.c \
+            include/*.h -- -x c -std=c11 -Iinclude
+
+  lint-fortran:
+    name: Lint Fortran
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Create development environment
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: environment.yml
+          environment-name: disprs
+          cache-environment: true
+          init-shell: bash
+
+      - name: Lint Fortran
+        run: fortitude check fortran --output-format=github
+
+  lint-python:
+    name: Lint Python
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Create development environment
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: environment.yml
+          environment-name: disprs
+          cache-environment: true
+          init-shell: bash
+
+      - name: Lint Python
+        run: |
+          ruff check python
+          ruff format --check python
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Create development environment
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-file: environment.yml
+          environment-name: disprs
+          cache-environment: true
+          init-shell: bash
+
+      - name: Configure Meson
+        run: >-
+          meson setup build-ci
+          --buildtype=release
+          -Db_ndebug=true
+          -Dpython=enabled
+          -Dfortran=enabled
+
+      - name: Test Rust
+        run: cargo test
+
+      - name: Build and test APIs
+        run: |
+          meson compile -C build-ci
+          meson test -C build-ci --print-errorlogs

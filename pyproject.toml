@@ -1,0 +1,28 @@
+[build-system]
+build-backend = "mesonpy"
+requires = ["meson-python>=0.18", "meson>=1.11", "ninja"]
+
+[project]
+name = "disprs"
+dynamic = ["version"]
+description = "Native D3, gCP, D4 and D4S dispersion corrections"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+
+[project.optional-dependencies]
+ase = ["ase>=3.23", "numpy>=1.23"]
+pyscf = ["pyscf>=2.8", "numpy>=1.23"]
+qcschema = ["qcelemental>=0.51", "numpy>=1.23"]
+
+[tool.meson-python.args]
+setup = ["-Dpython=enabled", "-Dpython_package=true", "-Dfortran=disabled"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "PIE"]
+ignore = ["E731"]

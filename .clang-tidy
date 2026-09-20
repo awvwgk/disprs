@@ -1,0 +1,9 @@
+Checks: >
+  -*,
+  clang-analyzer-*,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
+  bugprone-*,
+  -bugprone-macro-parentheses,
+  -bugprone-reserved-identifier
+WarningsAsErrors: "*"
+HeaderFilterRegex: "^(include|tests)/"

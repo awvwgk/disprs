@@ -1,0 +1,18 @@
+name: disprs-docs
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - rust>=1.88
+  - c-compiler
+  - doxygen
+  - sphinx-rustdocgen ==1.2.1
+  - pip:
+      - sphinx>=8,<9
+      - sphinx-book-theme>=1.1,<2
+      - myst-parser>=4,<5
+      - breathe>=4.36,<5
+      - sphinxcontrib-rust==1.2.1
+      - sphinx-fortran-domain==0.1.0
+      - ford==7.0.13

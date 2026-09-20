@@ -1,0 +1,25 @@
+[package]
+name = "disprs-cli"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+license = "Apache-2.0"
+description = "Standalone Rust command-line client for the installed disprs library"
+include = ["Cargo.toml", "Cargo.lock", "src/**", "meson.build", "assets/meson.build", "subprojects/.gitignore", "subprojects/*.wrap", "subprojects/packagefiles/**", "README.md", "test_cli.py"]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(meson)'] }
+
+[[bin]]
+name = "disprs"
+path = "src/main.rs"
+
+[features]
+static = []
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+clap_complete = "4"
+clap_mangen = "0.2"
+libloading = "0.8"
+serde_json = "1"

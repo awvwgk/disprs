@@ -1,0 +1,48 @@
+option(
+  'fortran',
+  type: 'feature',
+  value: 'disabled',
+  description: 'Build the Fortran API',
+)
+option(
+  'python',
+  type: 'feature',
+  value: 'disabled',
+  description: 'Install the Python API',
+)
+option(
+  'python_package',
+  type: 'boolean',
+  value: false,
+  description: 'Bundle the native library inside the Python package',
+)
+option(
+  'd3_compat',
+  type: 'boolean',
+  value: false,
+  description: 'Enable D3 compatibility headers',
+)
+option(
+  'd4_compat',
+  type: 'boolean',
+  value: false,
+  description: 'Enable D4 compatibility headers',
+)
+option(
+  'benchmarks',
+  type: 'feature',
+  value: 'disabled',
+  description: 'Build upstream comparison benchmarks',
+)
+option(
+  'd3_reference',
+  type: 'string',
+  value: '',
+  description: 'Path to a simple-dftd3 source checkout for reference tests (requires Fortran)',
+)
+option(
+  'd4_reference',
+  type: 'string',
+  value: '',
+  description: 'Path to a dftd4 source checkout for reference tests (requires Fortran)',
+)
